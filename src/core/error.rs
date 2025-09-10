@@ -1,0 +1,15 @@
+#[derive(Debug)]
+pub enum Error {
+    StreamAlreadyExists(String),
+    StreamCreationFailed(String),
+    StorageInitializationFailed(String),
+    StreamDoesNotExist(String),
+    FailedToWriteFile(String),
+    FailedToOpenFile(String),
+    FailedToReadFile(String),
+    FailedToReadDir(String),
+    CustomConfigNotFound(String),
+    NoStreamSet,
+    SerializeFailed(String),
+    DeserializeFailed(String),
+}
