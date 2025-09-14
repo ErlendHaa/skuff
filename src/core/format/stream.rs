@@ -214,7 +214,7 @@ mod validation {
     #[rustfmt::skip]
     fn create_event_exists(stream: &Stream, id: &Id) -> bool {
         stream.0.iter().any(|event| match event {
-              Event::Create { entity, .. } => match entity {
+            Event::Create { entity, .. } => match entity {
                   Entity::Login    { id: eid, .. }
                 | Entity::Logout   { id: eid, .. }
                 | Entity::Break    { id: eid, .. }
