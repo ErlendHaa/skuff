@@ -12,6 +12,7 @@ impl State {
     }
 }
 
+#[rustfmt::skip]
 pub fn replay(events: &Stream) -> State {
     let mut state = HashMap::new();
 
@@ -19,9 +20,9 @@ pub fn replay(events: &Stream) -> State {
         match event {
             Event::Create { entity, .. } | Event::Edit { entity, .. } => {
                 let id = match entity {
-                    Entity::Login { id, .. }
-                    | Entity::Logout { id, .. }
-                    | Entity::Break { id, .. }
+                      Entity::Login    { id, .. }
+                    | Entity::Logout   { id, .. }
+                    | Entity::Break    { id, .. }
                     | Entity::Activity { id, .. } => id,
                 };
                 state.insert(id.clone(), entity.clone());
@@ -34,9 +35,9 @@ pub fn replay(events: &Stream) -> State {
     let mut state: Vec<Entity> = state.into_values().collect();
 
     state.sort_by_key(|entity| match entity {
-        Entity::Login { timestamp, .. }
-        | Entity::Logout { timestamp, .. }
-        | Entity::Break { timestamp, .. }
+          Entity::Login    { timestamp, .. }
+        | Entity::Logout   { timestamp, .. }
+        | Entity::Break    { timestamp, .. }
         | Entity::Activity { timestamp, .. } => *timestamp,
     });
 
