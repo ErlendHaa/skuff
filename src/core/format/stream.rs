@@ -25,11 +25,39 @@ impl Stream {
         serde_json::to_vec(&self.0).map_err(|err| Error::SerializeFailed(err.to_string()))
     }
 
+    #[rustfmt::skip]
     pub fn push(&mut self, event: Event) -> Result<(), Error> {
-        // TODO validate event
+        match &event {
+            Event::Edit { entity, .. } => {
+                let id = match entity {
+                      Entity::Login    { id, .. }
+                    | Entity::Logout   { id, .. }
+                    | Entity::Break    { id, .. }
+                    | Entity::Activity { id, .. } => id,
+                };
+                if !self.create_exists(id) {
+                    return Err(Error::EntityDoesNotExist(id.clone()));
+                }
+            },
+            Event::Create { .. } => { /* Always allowed */ }
+            Event::Delete { .. } => { /* Always allowed */ }
+        }
         self.0.push(event);
 
         Ok(())
+    }
+
+    #[rustfmt::skip]
+    fn create_exists(&self, id: &Id) -> bool {
+        self.0.iter().any(|event| match event {
+              Event::Create { entity, .. } => match entity {
+                  Entity::Login    { id: eid, .. }
+                | Entity::Logout   { id: eid, .. }
+                | Entity::Break    { id: eid, .. }
+                | Entity::Activity { id: eid, .. } => eid == id,
+              },
+              _ => false
+        })
     }
 }
 
@@ -73,7 +101,7 @@ pub enum Event {
     },
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Entity {
     Login {
@@ -143,7 +171,7 @@ mod duration_seconds {
 ///    structures are expected to be serialized. This can be helpful for new developers
 ///    joining the project or for anyone needing to understand the data format.
 #[cfg(test)]
-mod tests {
+mod schema {
     use super::*;
     use chrono::Duration;
     use chrono::TimeZone;
@@ -510,5 +538,59 @@ mod tests {
         };
 
         assert_json_eq(&to_json(&event), &expected);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn push_edit_event() {
+        let id = Id::new();
+        let mut stream = Stream::new();
+        let event = Event::Create {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: id.clone(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+
+        stream.push(event).unwrap();
+
+        let event = Event::Edit {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: id.clone(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+
+        stream.push(event).unwrap();
+        assert_eq!(stream.0.len(), 2);
+    }
+
+    #[test]
+    fn push_edit_event_with_invalid_id() {
+        let id = Id::new();
+
+        let mut stream = Stream::new();
+        let event = Event::Edit {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: id.clone(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+
+        let err = stream.push(event).unwrap_err();
+        match err {
+            super::Error::EntityDoesNotExist(eid) => assert_eq!(eid, id),
+            other => panic!("expected EventDoesNotExist, got {:?}", other),
+        }
     }
 }

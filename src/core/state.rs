@@ -42,3 +42,50 @@ pub fn replay(events: &Stream) -> State {
 
     State(state)
 }
+
+#[cfg(test)]
+mod tests {
+    use chrono::TimeZone as _;
+
+    use crate::Entity;
+    use crate::Event;
+    use crate::Id;
+    use crate::Stream;
+
+    use super::State;
+
+    #[test]
+    fn edit() {
+        let id = Id::new();
+        let mut stream = Stream::new();
+        stream
+            .push(Event::Create {
+                id: Id::new(),
+                created_at: chrono::Utc::now(),
+                entity: Entity::Login {
+                    id: id.clone(),
+                    timestamp: chrono::Utc.with_ymd_and_hms(2023, 1, 1, 9, 0, 0).unwrap(),
+                },
+            })
+            .unwrap();
+        stream
+            .push(Event::Edit {
+                id: Id::new(),
+                created_at: chrono::Utc::now(),
+                entity: Entity::Login {
+                    id: id.clone(),
+                    timestamp: chrono::Utc.with_ymd_and_hms(2023, 1, 1, 10, 0, 0).unwrap(),
+                },
+            })
+            .unwrap();
+
+        let state = super::replay(&stream);
+
+        let expected = State(vec![Entity::Login {
+            id: id.clone(),
+            timestamp: chrono::Utc.with_ymd_and_hms(2023, 1, 1, 10, 0, 0).unwrap(),
+        }]);
+
+        assert_eq!(state.0, expected.0);
+    }
+}

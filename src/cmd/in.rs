@@ -19,6 +19,9 @@ pub struct Args {
     #[arg(short, long, value_parser = parse_date, default_value_t = today())]
     date: NaiveDate,
 
+    #[arg(short, long, value_parser = Id::from_str)]
+    edit: Option<Id>,
+
     #[arg(long)]
     config_file: Option<PathBuf>,
 
@@ -32,12 +35,22 @@ pub struct Args {
 pub fn command(args: Args) -> Result<(), Error> {
     let storage = storage(args.storage)?;
 
-    let event = Event::Create {
-        id: Id::new(),
-        created_at: Utc::now(),
-        entity: Entity::Login {
+    let event = match args.edit {
+        Some(id) => Event::Edit {
             id: Id::new(),
-            timestamp: from_naive(&args.date, &args.time),
+            created_at: Utc::now(),
+            entity: Entity::Login {
+                id,
+                timestamp: from_naive(&args.date, &args.time),
+            },
+        },
+        None => Event::Create {
+            id: Id::new(),
+            created_at: Utc::now(),
+            entity: Entity::Login {
+                id: Id::new(),
+                timestamp: from_naive(&args.date, &args.time),
+            },
         },
     };
 

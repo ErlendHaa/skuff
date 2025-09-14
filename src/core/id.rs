@@ -4,13 +4,17 @@ use serde::Deserialize;
 use serde::Serialize;
 use uuid::Uuid;
 
-#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Id(Uuid);
 
 impl Id {
     pub fn new() -> Self {
         Id(Uuid::new_v4())
+    }
+
+    pub fn from_str(s: &str) -> Result<Self, uuid::Error> {
+        Uuid::parse_str(s).map(Id)
     }
 }
 
