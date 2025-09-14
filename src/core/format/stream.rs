@@ -39,7 +39,20 @@ impl Stream {
                     return Err(Error::EntityDoesNotExist(id.clone()));
                 }
             },
-            Event::Create { .. } => { /* Always allowed */ }
+            Event::Create { entity, .. } => {
+                let id = match entity {
+                      Entity::Login    { id, .. }
+                    | Entity::Logout   { id, .. }
+                    | Entity::Break    { id, .. }
+                    | Entity::Activity { id, .. } => id,
+                };
+                // This should never happen if the application logic is correct. It's the programs
+                // job to create unique IDs for new entities so if this fails we have a logic error
+                // somewhere.
+                if self.create_exists(id) {
+                    return Err(Error::EntityIdExists(id.clone()));
+                }
+            },
             Event::Delete { .. } => { /* Always allowed */ }
         }
         self.0.push(event);
@@ -590,6 +603,53 @@ mod tests {
         let err = stream.push(event).unwrap_err();
         match err {
             super::Error::EntityDoesNotExist(eid) => assert_eq!(eid, id),
+            other => panic!("expected EventDoesNotExist, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn push_create_event() {
+        let mut stream = Stream::new();
+        let event = Event::Create {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: Id::new(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+
+        stream.push(event).unwrap();
+        assert_eq!(stream.0.len(), 1);
+    }
+
+    #[test]
+    fn push_create_event_with_conflicting_id() {
+        let id = Id::new();
+        let mut stream = Stream::new();
+        let event = Event::Create {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: id.clone(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+
+        stream.push(event).unwrap();
+
+        let event = Event::Create {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: id.clone(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+
+        let err = stream.push(event).unwrap_err();
+        match err {
+            super::Error::EntityIdExists(eid) => assert_eq!(eid, id),
             other => panic!("expected EventDoesNotExist, got {:?}", other),
         }
     }

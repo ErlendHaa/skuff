@@ -7,6 +7,7 @@ pub enum Error {
     StorageInitializationFailed(String),
     StreamDoesNotExist(String),
     EntityDoesNotExist(Id),
+    EntityIdExists(Id),
     FailedToWriteFile(String),
     FailedToOpenFile(String),
     FailedToReadFile(String),
