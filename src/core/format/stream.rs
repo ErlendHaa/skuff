@@ -25,8 +25,15 @@ impl Stream {
         serde_json::to_vec(&self.0).map_err(|err| Error::SerializeFailed(err.to_string()))
     }
 
-    #[rustfmt::skip]
     pub fn push(&mut self, event: Event) -> Result<(), Error> {
+        let _ = self.validate(&event)?;
+        self.0.push(event);
+
+        Ok(())
+    }
+
+    #[rustfmt::skip]
+    fn validate(&self, event: &Event) -> Result<(), Error> {
         match &event {
             Event::Edit { entity, .. } => {
                 let id = match entity {
@@ -61,8 +68,7 @@ impl Stream {
                     return Err(Error::EntityAlreadyDeleted(entity_id.clone()));
                 }
             },
-        }
-        self.0.push(event);
+        };
 
         Ok(())
     }
