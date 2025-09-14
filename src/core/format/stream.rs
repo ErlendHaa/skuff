@@ -623,6 +623,43 @@ mod tests {
     }
 
     #[test]
+    fn push_edit_event_twice() {
+        let id = Id::new();
+        let mut stream = Stream::new();
+        let event = Event::Create {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: id.clone(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+
+        stream.push(event).unwrap();
+
+        let event = Event::Edit {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: id.clone(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+        stream.push(event).unwrap();
+
+        let event = Event::Edit {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: id.clone(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+        stream.push(event).unwrap();
+        assert_eq!(stream.0.len(), 3);
+    }
+
+    #[test]
     fn push_create_event() {
         let mut stream = Stream::new();
         let event = Event::Create {
