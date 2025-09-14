@@ -17,7 +17,7 @@ pub fn replay(events: &Stream) -> State {
 
     for event in events {
         match event {
-            Event::Create { entity, .. } | Event::Update { entity, .. } => {
+            Event::Create { entity, .. } | Event::Edit { entity, .. } => {
                 let id = match entity {
                     Entity::Login { id, .. }
                     | Entity::Logout { id, .. }

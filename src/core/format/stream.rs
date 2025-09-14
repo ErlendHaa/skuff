@@ -58,7 +58,7 @@ pub enum Event {
         #[serde(flatten)]
         entity: Entity,
     },
-    Update {
+    Edit {
         #[serde(rename = "event_id")]
         id: Id,
         created_at: DateTime<Utc>,
@@ -294,17 +294,17 @@ mod tests {
         assert_json_eq(&to_json(&event), &expected);
     }
 
-    // -------- Update variants --------
+    // -------- Edit variants --------
 
     #[test]
-    fn login_update() {
+    fn login_edit() {
         let event_id = Id::new();
         let entity_id = Id::new();
         let created_at = fixed_time();
         let timestamp = fixed_time();
 
         let expected = json!({
-            "op": "update",
+            "op": "edit",
             "event_id": event_id,
             "created_at": created_at,
             "entity_id": entity_id,
@@ -312,7 +312,7 @@ mod tests {
             "timestamp": timestamp
         });
 
-        let event = Event::Update {
+        let event = Event::Edit {
             id: event_id,
             created_at,
             entity: Entity::Login {
@@ -325,14 +325,14 @@ mod tests {
     }
 
     #[test]
-    fn logout_update() {
+    fn logout_edit() {
         let event_id = Id::new();
         let entity_id = Id::new();
         let created_at = fixed_time();
         let timestamp = fixed_time();
 
         let expected = json!({
-            "op": "update",
+            "op": "edit",
             "event_id": event_id,
             "created_at": created_at,
             "entity_id": entity_id,
@@ -340,7 +340,7 @@ mod tests {
             "timestamp": timestamp
         });
 
-        let event = Event::Update {
+        let event = Event::Edit {
             id: event_id,
             created_at,
             entity: Entity::Logout {
@@ -353,7 +353,7 @@ mod tests {
     }
 
     #[test]
-    fn break_update() {
+    fn break_edit() {
         let event_id = Id::new();
         let entity_id = Id::new();
         let created_at = fixed_time();
@@ -362,7 +362,7 @@ mod tests {
         let autoinsert = false;
 
         let expected = json!({
-            "op": "update",
+            "op": "edit",
             "event_id": event_id,
             "created_at": created_at,
             "entity_id": entity_id,
@@ -372,7 +372,7 @@ mod tests {
             "autoinsert": autoinsert
         });
 
-        let event = Event::Update {
+        let event = Event::Edit {
             id: event_id,
             created_at,
             entity: Entity::Break {
@@ -387,7 +387,7 @@ mod tests {
     }
 
     #[test]
-    fn activity_update() {
+    fn activity_edit() {
         let event_id = Id::new();
         let entity_id = Id::new();
         let created_at = fixed_time();
@@ -396,7 +396,7 @@ mod tests {
         let autoinsert = false;
 
         let expected = json!({
-            "op": "update",
+            "op": "edit",
             "event_id": event_id,
             "created_at": created_at,
             "entity_id": entity_id,
@@ -407,7 +407,7 @@ mod tests {
             "autoinsert": autoinsert
         });
 
-        let event = Event::Update {
+        let event = Event::Edit {
             id: event_id,
             created_at,
             entity: Entity::Activity {
