@@ -53,11 +53,26 @@ impl Stream {
                     return Err(Error::EntityIdExists(id.clone()));
                 }
             },
-            Event::Delete { .. } => { /* Always allowed */ }
+            Event::Delete { entity_id, .. } => {
+                if !self.create_exists(entity_id) {
+                    return Err(Error::EntityDoesNotExist(entity_id.clone()));
+                }
+                if !self.delete_exists(entity_id) {
+                    return Err(Error::EntityAlreadyDeleted(entity_id.clone()));
+                }
+            },
         }
         self.0.push(event);
 
         Ok(())
+    }
+
+    #[rustfmt::skip]
+    fn delete_exists(&self, id: &Id) -> bool {
+        !self.0.iter().rev().any(|event| match event {
+              Event::Delete { entity_id, .. } => entity_id == id,
+              _ => false
+        })
     }
 
     #[rustfmt::skip]
@@ -650,6 +665,73 @@ mod tests {
         let err = stream.push(event).unwrap_err();
         match err {
             super::Error::EntityIdExists(eid) => assert_eq!(eid, id),
+            other => panic!("expected EventDoesNotExist, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn push_delete_event_with_invalid_id() {
+        let id = Id::new();
+        let mut stream = Stream::new();
+        let event = Event::Delete {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity_id: id.clone(),
+        };
+
+        let err = stream.push(event).unwrap_err();
+        match err {
+            super::Error::EntityDoesNotExist(eid) => assert_eq!(eid, id),
+            other => panic!("expected EventDoesNotExist, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn push_delete_event() {
+        let id = Id::new();
+        let mut stream = Stream::new();
+        let event = Event::Create {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: id.clone(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+        stream.push(event).unwrap();
+
+        let event = Event::Delete {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity_id: id.clone(),
+        };
+        stream.push(event).unwrap();
+        assert_eq!(stream.0.len(), 2);
+    }
+
+    #[test]
+    fn push_delete_event_twice() {
+        let id = Id::new();
+        let mut stream = Stream::new();
+        let event = Event::Create {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity: Entity::Login {
+                id: id.clone(),
+                timestamp: chrono::Utc::now(),
+            },
+        };
+        stream.push(event).unwrap();
+
+        let event = Event::Delete {
+            id: Id::new(),
+            created_at: chrono::Utc::now(),
+            entity_id: id.clone(),
+        };
+        let _ = stream.push(event.clone()).unwrap();
+        let err = stream.push(event).unwrap_err();
+        match err {
+            super::Error::EntityAlreadyDeleted(eid) => assert_eq!(eid, id),
             other => panic!("expected EventDoesNotExist, got {:?}", other),
         }
     }

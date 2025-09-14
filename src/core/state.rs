@@ -88,4 +88,71 @@ mod tests {
 
         assert_eq!(state.0, expected.0);
     }
+
+    #[test]
+    fn delete() {
+        let id = Id::new();
+        let mut stream = Stream::new();
+        stream
+            .push(Event::Create {
+                id: Id::new(),
+                created_at: chrono::Utc::now(),
+                entity: Entity::Login {
+                    id: id.clone(),
+                    timestamp: chrono::Utc.with_ymd_and_hms(2023, 1, 1, 9, 0, 0).unwrap(),
+                },
+            })
+            .unwrap();
+        stream
+            .push(Event::Delete {
+                id: Id::new(),
+                created_at: chrono::Utc::now(),
+                entity_id: id.clone(),
+            })
+            .unwrap();
+
+        let state = super::replay(&stream);
+
+        let expected = State(vec![]);
+
+        assert_eq!(state.0, expected.0);
+    }
+
+    #[test]
+    fn delete_create_with_edit() {
+        let id = Id::new();
+        let mut stream = Stream::new();
+        stream
+            .push(Event::Create {
+                id: Id::new(),
+                created_at: chrono::Utc::now(),
+                entity: Entity::Login {
+                    id: id.clone(),
+                    timestamp: chrono::Utc.with_ymd_and_hms(2023, 1, 1, 9, 0, 0).unwrap(),
+                },
+            })
+            .unwrap();
+        stream
+            .push(Event::Edit {
+                id: Id::new(),
+                created_at: chrono::Utc::now(),
+                entity: Entity::Login {
+                    id: id.clone(),
+                    timestamp: chrono::Utc.with_ymd_and_hms(2023, 1, 1, 10, 0, 0).unwrap(),
+                },
+            })
+            .unwrap();
+        stream
+            .push(Event::Delete {
+                id: Id::new(),
+                created_at: chrono::Utc::now(),
+                entity_id: id.clone(),
+            })
+            .unwrap();
+
+        let state = super::replay(&stream);
+        let expected = State(vec![]);
+
+        assert_eq!(state.0, expected.0);
+    }
 }

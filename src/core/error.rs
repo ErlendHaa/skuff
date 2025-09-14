@@ -8,6 +8,7 @@ pub enum Error {
     StreamDoesNotExist(String),
     EntityDoesNotExist(Id),
     EntityIdExists(Id),
+    EntityAlreadyDeleted(Id),
     FailedToWriteFile(String),
     FailedToOpenFile(String),
     FailedToReadFile(String),

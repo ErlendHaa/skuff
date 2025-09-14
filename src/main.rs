@@ -23,6 +23,7 @@ fn main() -> Result<(), skuff::Error> {
         Out(args) => cmd::out::command(args),
         Log(args) => cmd::log::command(args),
         Ls(args) => cmd::ls::command(args),
+        Rm(args) => cmd::rm::command(args),
         Switch(args) => cmd::switch::command(args),
     }
 }
@@ -41,5 +42,6 @@ enum Command {
     Out(cmd::out::Args),
     Log(cmd::log::Args),
     Ls(cmd::ls::Args),
+    Rm(cmd::rm::Args),
     Switch(cmd::switch::Args),
 }
