@@ -34,64 +34,12 @@ impl Stream {
 
     #[rustfmt::skip]
     fn validate(&self, event: &Event) -> Result<(), Error> {
-        match &event {
-            Event::Edit { entity, .. } => {
-                let id = match entity {
-                      Entity::Login    { id, .. }
-                    | Entity::Logout   { id, .. }
-                    | Entity::Break    { id, .. }
-                    | Entity::Activity { id, .. } => id,
-                };
-                if !self.create_exists(id) {
-                    return Err(Error::EntityDoesNotExist(id.clone()));
-                }
-            },
-            Event::Create { entity, .. } => {
-                let id = match entity {
-                      Entity::Login    { id, .. }
-                    | Entity::Logout   { id, .. }
-                    | Entity::Break    { id, .. }
-                    | Entity::Activity { id, .. } => id,
-                };
-                // This should never happen if the application logic is correct. It's the programs
-                // job to create unique IDs for new entities so if this fails we have a logic error
-                // somewhere.
-                if self.create_exists(id) {
-                    return Err(Error::EntityIdExists(id.clone()));
-                }
-            },
-            Event::Delete { entity_id, .. } => {
-                if !self.create_exists(entity_id) {
-                    return Err(Error::EntityDoesNotExist(entity_id.clone()));
-                }
-                if !self.delete_exists(entity_id) {
-                    return Err(Error::EntityAlreadyDeleted(entity_id.clone()));
-                }
-            },
-        };
+        validation::edit_references_create_id(self, event)?;
+        validation::create_id_is_unique(self, event)?;
+        validation::delete_references_create_id(self, event)?;
+        validation::delete_only_once(self, event)?;
 
         Ok(())
-    }
-
-    #[rustfmt::skip]
-    fn delete_exists(&self, id: &Id) -> bool {
-        !self.0.iter().rev().any(|event| match event {
-              Event::Delete { entity_id, .. } => entity_id == id,
-              _ => false
-        })
-    }
-
-    #[rustfmt::skip]
-    fn create_exists(&self, id: &Id) -> bool {
-        self.0.iter().any(|event| match event {
-              Event::Create { entity, .. } => match entity {
-                  Entity::Login    { id: eid, .. }
-                | Entity::Logout   { id: eid, .. }
-                | Entity::Break    { id: eid, .. }
-                | Entity::Activity { id: eid, .. } => eid == id,
-              },
-              _ => false
-        })
     }
 }
 
@@ -188,6 +136,92 @@ mod duration_seconds {
     {
         let secs = i64::deserialize(deserializer)?;
         Ok(Duration::seconds(secs))
+    }
+}
+
+mod validation {
+    use super::*;
+
+    #[rustfmt::skip]
+    pub fn edit_references_create_id(stream: &Stream, event: &Event) -> Result<(), Error> {
+        match &event {
+            Event::Edit { entity, .. } => {
+                let id = match entity {
+                      Entity::Login    { id, .. }
+                    | Entity::Logout   { id, .. }
+                    | Entity::Break    { id, .. }
+                    | Entity::Activity { id, .. } => id,
+                };
+                match create_event_exists(stream, id) {
+                    true => Ok(()),
+                    false => Err(Error::EntityDoesNotExist(id.clone())),
+                }
+            },
+            _ => Ok(())
+        }
+    }
+
+    // This should never happen if the application logic is correct. It's the programs
+    // job to create unique IDs for new entities so if this fails we have a logic error
+    // somewhere.
+    #[rustfmt::skip]
+    pub fn create_id_is_unique(stream: &Stream, event: &Event) -> Result<(), Error> {
+        match &event {
+            Event::Create { entity, .. } => {
+                let id = match entity {
+                      Entity::Login    { id, .. }
+                    | Entity::Logout   { id, .. }
+                    | Entity::Break    { id, .. }
+                    | Entity::Activity { id, .. } => id,
+                };
+
+                match create_event_exists(stream, id) {
+                    false => Ok(()),
+                    true => Err(Error::EntityIdExists(id.clone())),
+                }
+            },
+            _ => Ok(()),
+        }
+    }
+
+    pub fn delete_references_create_id(stream: &Stream, event: &Event) -> Result<(), Error> {
+        match &event {
+            Event::Delete { entity_id, .. } => match create_event_exists(stream, entity_id) {
+                true => Ok(()),
+                false => Err(Error::EntityDoesNotExist(entity_id.clone())),
+            },
+            _ => Ok(()),
+        }
+    }
+
+    pub fn delete_only_once(stream: &Stream, event: &Event) -> Result<(), Error> {
+        match &event {
+            Event::Delete { entity_id, .. } => match delete_event_exists(stream, entity_id) {
+                true => Err(Error::EntityAlreadyDeleted(entity_id.clone())),
+                false => Ok(()),
+            },
+            _ => Ok(()),
+        }
+    }
+
+    fn delete_event_exists(stream: &Stream, id: &Id) -> bool {
+        stream.0.iter().rev().any(|event| match event {
+            Event::Delete { entity_id, .. } => entity_id == id,
+            _ => false,
+        })
+    }
+
+    #[rustfmt::skip]
+    fn create_event_exists(stream: &Stream, id: &Id) -> bool {
+        stream.0.iter().any(|event| match event {
+              Event::Create { entity, .. } => match entity {
+                  Entity::Login    { id: eid, .. }
+                | Entity::Logout   { id: eid, .. }
+                | Entity::Break    { id: eid, .. }
+                | Entity::Activity { id: eid, .. } => eid == id,
+              },
+              _ => false
+        })
     }
 }
 
